@@ -28,9 +28,14 @@ class WebAdapter extends Adapter
 
       message = if process.env.HUBOT_HTML_RESPONSE then @toHTML(strings.shift()) else strings.shift()
 
-      request.post(sendMessageUrl+user.room).form({
+      @robot.logger.debug "Sending [#{user.room}] #{@robot.name} => #{user.user.name} #{message} " + JSON.stringify(user.user.options)
+
+      request.post(sendMessageUrl).form({
         message: message,
-        from: "#{@robot.name}"
+        room: "#{user.room}",
+        from: "#{@robot.name}",
+        to: "#{user.user.name}",
+        options: JSON.stringify(user.user.options)
       })
       @send user, strings...
 
@@ -50,13 +55,14 @@ class WebAdapter extends Adapter
       else
         user.options = {}
 
-      console.log "[#{req.params.room}] #{user.name} => #{req.body.message}"
+      self.robot.logger.debug "Received: [#{req.params.room}] #{user.name} => #{req.body.message} " + JSON.stringify(user.options)
 
       res.setHeader 'content-type', 'text/html'
-      self.receive new TextMessage(user, req.body.message)
+      self.receive new TextMessage(user, "#{self.robot.name} #{req.body.message}")
       res.end 'received'
 
     self.emit "connected"
 
 exports.use = (robot) ->
+  robot.logger.info 'Forwarding responses to ' + if sendMessageUrl then sendMessageUrl else 'nowhere'
   new WebAdapter robot
